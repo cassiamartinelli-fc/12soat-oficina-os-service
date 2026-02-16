@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { HealthController } from './health/health.controller';
 import { ClienteDddModule } from './infrastructure/cliente-ddd.module';
 import { VeiculoDddModule } from './infrastructure/veiculo-ddd.module';
 import { PecaDddModule } from './infrastructure/peca-ddd.module';
@@ -25,5 +26,6 @@ import { OrdemServicoDddModule } from './infrastructure/ordem-servico-ddd.module
     ServicoDddModule,
     OrdemServicoDddModule,
   ],
+  controllers: [HealthController],
 })
 export class AppModule {}
