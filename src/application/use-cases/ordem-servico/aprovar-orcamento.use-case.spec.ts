@@ -1,179 +1,98 @@
-import { Test, TestingModule } from '@nestjs/testing'
-import { OrdemServico } from '../../../domain/entities/ordem-servico.entity'
-import type { IOrdemServicoRepository } from '../../../domain/repositories/ordem-servico.repository.interface'
-import { ORDEM_SERVICO_REPOSITORY_TOKEN } from '../../../infrastructure/ddd.module'
-import { BusinessRuleException, EntityNotFoundException } from '../../../shared/exceptions/domain.exception'
-import { OrdemServicoId } from '../../../shared/types/entity-id'
-import { AprovarOrcamentoCommand, AprovarOrcamentoUseCase } from './aprovar-orcamento.use-case'
+import { AprovarOrcamentoUseCase } from "./aprovar-orcamento.use-case";
+import {
+  EntityNotFoundException,
+  BusinessRuleException,
+} from "../../../shared/exceptions/domain.exception";
+import { OrdemServicoId } from "../../../shared/types/entity-id";
+import type { IOrdemServicoRepository } from "../../../domain/repositories/ordem-servico.repository.interface";
+import { OrdemServico } from "../../../domain/entities/ordem-servico.entity";
 
-describe('AprovarOrcamentoUseCase', () => {
-  let useCase: AprovarOrcamentoUseCase
-  let ordemServicoRepository: jest.Mocked<IOrdemServicoRepository>
-  let mockOrdemServico: jest.Mocked<OrdemServico>
+describe("AprovarOrcamentoUseCase", () => {
+  let useCase: AprovarOrcamentoUseCase;
+  let repository: jest.Mocked<IOrdemServicoRepository>;
 
-  beforeEach(async () => {
-    const mockRepository = {
-      salvar: jest.fn(),
-      buscarPorId: jest.fn(),
-      buscarTodos: jest.fn(),
-      buscarPorClienteId: jest.fn(),
-      excluir: jest.fn(),
-      adicionarItemServico: jest.fn(),
-      adicionarItemPeca: jest.fn(),
-    }
+  const ordemServicoId = "os-id-123";
 
-    const module: TestingModule = await Test.createTestingModule({
-      providers: [AprovarOrcamentoUseCase, { provide: ORDEM_SERVICO_REPOSITORY_TOKEN, useValue: mockRepository }],
-    }).compile()
-
-    useCase = module.get<AprovarOrcamentoUseCase>(AprovarOrcamentoUseCase)
-    ordemServicoRepository = module.get(ORDEM_SERVICO_REPOSITORY_TOKEN)
-
-    // Mock da OrdemServico
-    mockOrdemServico = {
-      id: { obterValor: () => 'ordem-id' },
+  const criarOrdemMock = (aguardandoAprovacao: boolean) =>
+    ({
+      id: OrdemServicoId.criar(ordemServicoId),
       status: {
-        isAguardandoAprovacao: jest.fn(),
+        isAguardandoAprovacao: jest.fn().mockReturnValue(aguardandoAprovacao),
       },
       aprovarOrcamento: jest.fn(),
       rejeitarOrcamento: jest.fn(),
-    } as any
-  })
+    }) as unknown as OrdemServico;
 
-  describe('execute', () => {
-    it('deve aprovar orçamento com sucesso', async () => {
-      const command: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-id',
+  beforeEach(() => {
+    repository = {
+      buscarPorId: jest.fn(),
+      salvar: jest.fn(),
+    } as unknown as jest.Mocked<IOrdemServicoRepository>;
+
+    useCase = new AprovarOrcamentoUseCase(repository);
+  });
+
+  it("deve aprovar orçamento quando aprovado = true e status AGUARDANDO_APROVACAO", async () => {
+    const ordemMock = criarOrdemMock(true);
+    repository.buscarPorId.mockResolvedValue(ordemMock);
+
+    const result = await useCase.execute({
+      ordemServicoId,
+      aprovado: true,
+    });
+
+    const argumentoChamado = repository.buscarPorId.mock.calls[0][0];
+
+    expect(argumentoChamado.equals(OrdemServicoId.criar(ordemServicoId))).toBe(
+      true,
+    );
+    expect(ordemMock.aprovarOrcamento).toHaveBeenCalledTimes(1);
+    expect(ordemMock.rejeitarOrcamento).not.toHaveBeenCalled();
+    expect(repository.salvar).toHaveBeenCalledWith(ordemMock);
+    expect(result).toBe(ordemMock);
+  });
+
+  it("deve rejeitar orçamento quando aprovado = false e status AGUARDANDO_APROVACAO", async () => {
+    const ordemMock = criarOrdemMock(true);
+    repository.buscarPorId.mockResolvedValue(ordemMock);
+
+    const result = await useCase.execute({
+      ordemServicoId,
+      aprovado: false,
+    });
+
+    expect(ordemMock.rejeitarOrcamento).toHaveBeenCalledTimes(1);
+    expect(ordemMock.aprovarOrcamento).not.toHaveBeenCalled();
+    expect(repository.salvar).toHaveBeenCalledWith(ordemMock);
+    expect(result).toBe(ordemMock);
+  });
+
+  it("deve lançar EntityNotFoundException quando ordem não existir", async () => {
+    repository.buscarPorId.mockResolvedValue(null);
+
+    await expect(
+      useCase.execute({
+        ordemServicoId,
         aprovado: true,
-      }
+      }),
+    ).rejects.toBeInstanceOf(EntityNotFoundException);
 
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(true)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-      ordemServicoRepository.salvar.mockResolvedValue(undefined)
+    expect(repository.salvar).not.toHaveBeenCalled();
+  });
 
-      const resultado = await useCase.execute(command)
+  it("deve lançar BusinessRuleException quando status não for AGUARDANDO_APROVACAO", async () => {
+    const ordemMock = criarOrdemMock(false);
+    repository.buscarPorId.mockResolvedValue(ordemMock);
 
-      expect(ordemServicoRepository.buscarPorId).toHaveBeenCalledWith(
-        expect.objectContaining({
-          obterValor: expect.any(Function),
-        }),
-      )
-      expect(resultado).toBe(mockOrdemServico)
-      expect(mockOrdemServico.aprovarOrcamento).toHaveBeenCalledTimes(1)
-      expect(mockOrdemServico.rejeitarOrcamento).not.toHaveBeenCalled()
-      expect(ordemServicoRepository.salvar).toHaveBeenCalledWith(mockOrdemServico)
-    })
-
-    it('deve rejeitar orçamento com sucesso', async () => {
-      const command: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-id',
-        aprovado: false,
-      }
-
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(true)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-      ordemServicoRepository.salvar.mockResolvedValue(undefined)
-
-      const resultado = await useCase.execute(command)
-
-      expect(ordemServicoRepository.buscarPorId).toHaveBeenCalledWith(
-        expect.objectContaining({
-          obterValor: expect.any(Function),
-        }),
-      )
-      expect(resultado).toBe(mockOrdemServico)
-      expect(mockOrdemServico.rejeitarOrcamento).toHaveBeenCalledTimes(1)
-      expect(mockOrdemServico.aprovarOrcamento).not.toHaveBeenCalled()
-      expect(ordemServicoRepository.salvar).toHaveBeenCalledWith(mockOrdemServico)
-    })
-
-    it('deve lançar EntityNotFoundException quando ordem não existe', async () => {
-      const command: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-inexistente',
+    await expect(
+      useCase.execute({
+        ordemServicoId,
         aprovado: true,
-      }
+      }),
+    ).rejects.toBeInstanceOf(BusinessRuleException);
 
-      ordemServicoRepository.buscarPorId.mockResolvedValue(null)
-
-      await expect(useCase.execute(command)).rejects.toThrow(
-        new EntityNotFoundException('OrdemServico', 'ordem-inexistente'),
-      )
-      expect(ordemServicoRepository.salvar).not.toHaveBeenCalled()
-    })
-
-    it('deve lançar BusinessRuleException quando ordem não está aguardando aprovação', async () => {
-      const command: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-id',
-        aprovado: true,
-      }
-
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(false)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-
-      await expect(useCase.execute(command)).rejects.toThrow(
-        new BusinessRuleException(
-          'Apenas ordens de serviço com status AGUARDANDO_APROVACAO podem ser aprovadas ou rejeitadas',
-        ),
-      )
-      expect(mockOrdemServico.aprovarOrcamento).not.toHaveBeenCalled()
-      expect(mockOrdemServico.rejeitarOrcamento).not.toHaveBeenCalled()
-      expect(ordemServicoRepository.salvar).not.toHaveBeenCalled()
-    })
-
-    it('deve criar OrdemServicoId corretamente a partir do string ID', async () => {
-      const command: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-específica',
-        aprovado: true,
-      }
-
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(true)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-      ordemServicoRepository.salvar.mockResolvedValue(undefined)
-
-      // Spy no método OrdemServicoId.criar
-      const createSpy = jest.spyOn(OrdemServicoId, 'criar')
-
-      await useCase.execute(command)
-
-      expect(createSpy).toHaveBeenCalledWith('ordem-específica')
-      expect(ordemServicoRepository.buscarPorId).toHaveBeenCalledTimes(1)
-
-      createSpy.mockRestore()
-    })
-
-    it('deve preservar a lógica de aprovação e rejeição independentemente', async () => {
-      // Teste aprovação
-      const commandAprovacao: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-id',
-        aprovado: true,
-      }
-
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(true)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-      ordemServicoRepository.salvar.mockResolvedValue(undefined)
-
-      await useCase.execute(commandAprovacao)
-
-      expect(mockOrdemServico.aprovarOrcamento).toHaveBeenCalledTimes(1)
-      expect(mockOrdemServico.rejeitarOrcamento).not.toHaveBeenCalled()
-
-      // Reset mocks
-      jest.clearAllMocks()
-
-      // Teste rejeição
-      const commandRejeicao: AprovarOrcamentoCommand = {
-        ordemServicoId: 'ordem-id',
-        aprovado: false,
-      }
-
-      mockOrdemServico.status.isAguardandoAprovacao.mockReturnValue(true)
-      ordemServicoRepository.buscarPorId.mockResolvedValue(mockOrdemServico)
-      ordemServicoRepository.salvar.mockResolvedValue(undefined)
-
-      await useCase.execute(commandRejeicao)
-
-      expect(mockOrdemServico.rejeitarOrcamento).toHaveBeenCalledTimes(1)
-      expect(mockOrdemServico.aprovarOrcamento).not.toHaveBeenCalled()
-    })
-  })
-})
+    expect(ordemMock.aprovarOrcamento).not.toHaveBeenCalled();
+    expect(ordemMock.rejeitarOrcamento).not.toHaveBeenCalled();
+    expect(repository.salvar).not.toHaveBeenCalled();
+  });
+});

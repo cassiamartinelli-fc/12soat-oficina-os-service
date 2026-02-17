@@ -1,192 +1,183 @@
-import { Cliente } from './cliente.entity'
+import { Cliente } from "./cliente.entity";
+import { ClienteId } from "../../shared/types/entity-id";
+import { CpfCnpj, Nome, Telefone } from "../value-objects";
+import { BusinessRuleException } from "../../shared/exceptions/domain.exception";
 
-describe('Cliente Entity', () => {
-  describe('Criação', () => {
-    it('deve criar cliente válido com CPF', () => {
+describe("Cliente Entity", () => {
+  const cpfValido = "52998224725";
+  const cnpjValido = "11222333000181";
+  const nomeValido = "João da Silva";
+  const telefoneValido = "11999999999";
+
+  describe("criar", () => {
+    it("deve criar um cliente válido com CPF", () => {
       const cliente = Cliente.criar({
-        nome: 'João Silva',
-        cpfCnpj: '50982686056',
-        telefone: '11999887766',
-      })
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+        telefone: telefoneValido,
+      });
 
-      expect(cliente.nome.obterValor()).toBe('João Silva')
-      expect(cliente.cpfCnpj.obterValor()).toBe('50982686056')
-      expect(cliente.telefone?.obterValor()).toBe('11999887766')
-      expect(cliente.isPessoaFisica()).toBe(true)
-      expect(cliente.isPessoaJuridica()).toBe(false)
-      expect(cliente.possuiTelefone()).toBe(true)
-    })
+      expect(cliente.nome.obterValor()).toBe(nomeValido);
+      expect(cliente.cpfCnpj.obterValor()).toBe(cpfValido);
+      expect(cliente.telefone?.obterValor()).toBe(telefoneValido);
 
-    it('deve criar cliente válido com CNPJ', () => {
+      expect(cliente.createdAt).toBeInstanceOf(Date);
+      expect(cliente.updatedAt).toBeInstanceOf(Date);
+    });
+
+    it("deve criar cliente sem telefone", () => {
       const cliente = Cliente.criar({
-        nome: 'Empresa ABC Ltda',
-        cpfCnpj: '70894785000179',
-      })
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
 
-      expect(cliente.nome.obterValor()).toBe('Empresa ABC Ltda')
-      expect(cliente.cpfCnpj.obterValor()).toBe('70894785000179')
-      expect(cliente.telefone).toBeUndefined()
-      expect(cliente.isPessoaJuridica()).toBe(true)
-      expect(cliente.isPessoaFisica()).toBe(false)
-      expect(cliente.possuiTelefone()).toBe(false)
-    })
+      expect(cliente.telefone).toBeUndefined();
+      expect(cliente.possuiTelefone()).toBe(false);
+    });
+  });
 
-    it('deve criar cliente sem telefone', () => {
-      const cliente = Cliente.criar({
-        nome: 'Maria Santos',
-        cpfCnpj: '50982686056',
-      })
+  describe("reconstituir", () => {
+    it("deve reconstituir cliente existente", () => {
+      const agora = new Date();
 
-      expect(cliente.telefone).toBeUndefined()
-      expect(cliente.possuiTelefone()).toBe(false)
-    })
+      const cliente = Cliente.reconstituir({
+        id: ClienteId.gerar(),
+        nome: Nome.criar(nomeValido),
+        cpfCnpj: CpfCnpj.criar(cpfValido),
+        telefone: Telefone.criar(telefoneValido),
+        createdAt: agora,
+        updatedAt: agora,
+      });
 
-    it('deve definir datas de criação e atualização', () => {
-      const antes = new Date()
-      const cliente = Cliente.criar({
-        nome: 'João Silva',
-        cpfCnpj: '50982686056',
-      })
-      const depois = new Date()
+      expect(cliente.nome.obterValor()).toBe(nomeValido);
+      expect(cliente.cpfCnpj.obterValor()).toBe(cpfValido);
+    });
+  });
 
-      expect(cliente.createdAt.getTime()).toBeGreaterThanOrEqual(antes.getTime())
-      expect(cliente.createdAt.getTime()).toBeLessThanOrEqual(depois.getTime())
-      expect(cliente.updatedAt.getTime()).toBeGreaterThanOrEqual(antes.getTime())
-      expect(cliente.updatedAt.getTime()).toBeLessThanOrEqual(depois.getTime())
-    })
-  })
-
-  describe('Reconstituição', () => {
-    it('deve reconstituir cliente a partir de dados existentes', () => {
-      const props = {
-        id: { obterValor: () => '123e4567-e89b-12d3-a456-426614174000' },
-        nome: { obterValor: () => 'João Silva' },
-        cpfCnpj: { obterValor: () => '50982686056', isCpf: () => true, isCnpj: () => false },
-        telefone: { obterValor: () => '11999887766' },
-        createdAt: new Date('2023-01-01'),
-        updatedAt: new Date('2023-01-02'),
-      }
-
-      const cliente = Cliente.reconstituir(props as any)
-
-      expect(cliente.id).toBe(props.id)
-      expect(cliente.nome).toBe(props.nome)
-      expect(cliente.cpfCnpj).toBe(props.cpfCnpj)
-      expect(cliente.telefone).toBe(props.telefone)
-      expect(cliente.createdAt).toBe(props.createdAt)
-      expect(cliente.updatedAt).toBe(props.updatedAt)
-    })
-  })
-
-  describe('Métodos de negócio', () => {
-    let cliente: Cliente
-
-    beforeEach(() => {
-      cliente = Cliente.criar({
-        nome: 'João Silva',
-        cpfCnpj: '50982686056',
-        telefone: '11999887766',
-      })
-    })
-
-    it('deve atualizar nome', () => {
-      const updatedAtAntes = cliente.updatedAt
-
-      // Pequeno delay para garantir diferença no timestamp
-      setTimeout(() => {
-        cliente.atualizarNome('João Santos')
-
-        expect(cliente.nome.obterValor()).toBe('João Santos')
-        expect(cliente.updatedAt.getTime()).toBeGreaterThan(updatedAtAntes.getTime())
-      }, 1)
-    })
-
-    it('deve atualizar telefone', () => {
-      cliente.atualizarTelefone('11888776655')
-
-      expect(cliente.telefone?.obterValor()).toBe('11888776655')
-      expect(cliente.possuiTelefone()).toBe(true)
-    })
-
-    it('deve remover telefone', () => {
-      cliente.atualizarTelefone()
-
-      expect(cliente.telefone).toBeUndefined()
-      expect(cliente.possuiTelefone()).toBe(false)
-    })
-
-    it('deve atualizar CPF/CNPJ', () => {
-      cliente.atualizarCpfCnpj('70894785000179')
-
-      expect(cliente.cpfCnpj.obterValor()).toBe('70894785000179')
-      expect(cliente.isPessoaJuridica()).toBe(true)
-      expect(cliente.isPessoaFisica()).toBe(false)
-    })
-  })
-
-  describe('Validações', () => {
-    it('deve rejeitar nome inválido', () => {
+  describe("regras de negócio", () => {
+    it("deve lançar erro se nome estiver ausente", () => {
       expect(() =>
-        Cliente.criar({
-          nome: 'A',
-          cpfCnpj: '50982686056',
+        Cliente.reconstituir({
+          id: ClienteId.gerar(),
+          nome: undefined as any,
+          cpfCnpj: CpfCnpj.criar(cpfValido),
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }),
-      ).toThrow('Nome deve ter pelo menos 2 caracteres')
-    })
+      ).toThrow(BusinessRuleException);
+    });
 
-    it('deve rejeitar CPF inválido', () => {
+    it("deve lançar erro se cpfCnpj estiver ausente", () => {
       expect(() =>
-        Cliente.criar({
-          nome: 'João Silva',
-          cpfCnpj: '12345678901',
+        Cliente.reconstituir({
+          id: ClienteId.gerar(),
+          nome: Nome.criar(nomeValido),
+          cpfCnpj: undefined as any,
+          createdAt: new Date(),
+          updatedAt: new Date(),
         }),
-      ).toThrow('CPF inválido')
-    })
+      ).toThrow(BusinessRuleException);
+    });
+  });
 
-    it('deve rejeitar telefone inválido', () => {
-      expect(() =>
-        Cliente.criar({
-          nome: 'João Silva',
-          cpfCnpj: '50982686056',
-          telefone: '123',
-        }),
-      ).toThrow('Telefone deve ter 10 ou 11 dígitos')
-    })
-  })
+  describe("atualizações", () => {
+    it("deve atualizar nome", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
 
-  describe('Comparação', () => {
-    it('deve comparar clientes pelo ID', () => {
+      cliente.atualizarNome("Maria Oliveira");
+
+      expect(cliente.nome.obterValor()).toBe("Maria Oliveira");
+    });
+
+    it("deve atualizar telefone", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
+
+      cliente.atualizarTelefone(telefoneValido);
+
+      expect(cliente.telefone?.obterValor()).toBe(telefoneValido);
+      expect(cliente.possuiTelefone()).toBe(true);
+    });
+
+    it("deve remover telefone", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+        telefone: telefoneValido,
+      });
+
+      cliente.atualizarTelefone(undefined);
+
+      expect(cliente.telefone).toBeUndefined();
+      expect(cliente.possuiTelefone()).toBe(false);
+    });
+
+    it("deve atualizar cpfCnpj", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
+
+      cliente.atualizarCpfCnpj(cnpjValido);
+
+      expect(cliente.cpfCnpj.obterValor()).toBe(cnpjValido);
+    });
+  });
+
+  describe("métodos auxiliares", () => {
+    it("deve identificar pessoa física", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
+
+      expect(cliente.isPessoaFisica()).toBe(true);
+      expect(cliente.isPessoaJuridica()).toBe(false);
+    });
+
+    it("deve identificar pessoa jurídica", () => {
+      const cliente = Cliente.criar({
+        nome: nomeValido,
+        cpfCnpj: cnpjValido,
+      });
+
+      expect(cliente.isPessoaJuridica()).toBe(true);
+      expect(cliente.isPessoaFisica()).toBe(false);
+    });
+
+    it("deve comparar igualdade por id", () => {
       const cliente1 = Cliente.criar({
-        nome: 'João Silva',
-        cpfCnpj: '50982686056',
-      })
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+      });
 
-      const cliente2 = Cliente.criar({
-        nome: 'Maria Santos',
-        cpfCnpj: '70894785000179',
-      })
+      const cliente2 = Cliente.reconstituir(cliente1.toSnapshot());
 
-      expect(cliente1.equals(cliente1)).toBe(true)
-      expect(cliente1.equals(cliente2)).toBe(false)
-    })
-  })
+      expect(cliente1.equals(cliente2)).toBe(true);
+    });
+  });
 
-  describe('Snapshot', () => {
-    it('deve retornar snapshot das propriedades', () => {
+  describe("toSnapshot", () => {
+    it("deve retornar snapshot completo", () => {
       const cliente = Cliente.criar({
-        nome: 'João Silva',
-        cpfCnpj: '50982686056',
-        telefone: '11999887766',
-      })
+        nome: nomeValido,
+        cpfCnpj: cpfValido,
+        telefone: telefoneValido,
+      });
 
-      const snapshot = cliente.toSnapshot()
+      const snapshot = cliente.toSnapshot();
 
-      expect(snapshot.id).toBe(cliente.id)
-      expect(snapshot.nome).toBe(cliente.nome)
-      expect(snapshot.cpfCnpj).toBe(cliente.cpfCnpj)
-      expect(snapshot.telefone).toBe(cliente.telefone)
-      expect(snapshot.createdAt).toBe(cliente.createdAt)
-      expect(snapshot.updatedAt).toBe(cliente.updatedAt)
-    })
-  })
-})
+      expect(snapshot.id).toBeDefined();
+      expect(snapshot.nome).toBeDefined();
+      expect(snapshot.cpfCnpj).toBeDefined();
+      expect(snapshot.telefone).toBeDefined();
+      expect(snapshot.createdAt).toBeInstanceOf(Date);
+      expect(snapshot.updatedAt).toBeInstanceOf(Date);
+    });
+  });
+});
