@@ -76,6 +76,18 @@ jobs:
           mkdir -p ~/.kube
           echo "${{ secrets.KUBECONFIG }}" > ~/.kube/config
 
+      - name: Aguardar K3s estar pronto
+        run: |
+          echo "Aguardando K3s API estar disponível..."
+          for i in $(seq 1 20); do
+            if kubectl get nodes --request-timeout=5s 2>/dev/null; then
+              echo "K3s pronto!"
+              break
+            fi
+            echo "Tentativa $i/20 - aguardando 15s..."
+            sleep 15
+          done
+
       - name: Atualizar tag da imagem no deployment
         run: |
           sed -i "s|image:.*os-service.*|image: ${{ env.IMAGE_NAME }}:${{ github.sha }}|" k8s/deployment.yaml
