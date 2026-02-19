@@ -35,12 +35,20 @@ import { OrdemServicoController } from "../presentation/controllers/ordem-servic
 // Tokens
 import { ORDEM_SERVICO_REPOSITORY_TOKEN } from "./ddd.module";
 
-// Importar módulos DDD necessários para injeção de dependências
+// Módulos DDD necessários
 import { PecaDddModule } from "./peca-ddd.module";
 import { ServicoDddModule } from "./servico-ddd.module";
+import { EventBusModule } from "../events/event-bus.module";
 
 // Services
 import { MetricsService } from "../shared/services/metrics.service";
+
+// Events
+import { OsCriadaPublisher } from "../events/publishers/os-criada.publisher";
+import { OrcamentoAprovadoHandler } from "../events/handlers/orcamento-aprovado.handler";
+import { OrcamentoCanceladoHandler } from "../events/handlers/orcamento-cancelado.handler";
+import { ExecucaoIniciadaHandler } from "../events/handlers/execucao-iniciada.handler";
+import { ExecucaoFinalizadaHandler } from "../events/handlers/execucao-finalizada.handler";
 
 @Module({
   imports: [
@@ -51,6 +59,7 @@ import { MetricsService } from "../shared/services/metrics.service";
     ]),
     ServicoDddModule,
     PecaDddModule,
+    EventBusModule,
   ],
   providers: [
     // Services
@@ -79,6 +88,13 @@ import { MetricsService } from "../shared/services/metrics.service";
 
     // Strategies
     OrdemServicoQueryFactory,
+
+    // Events
+    OsCriadaPublisher,
+    OrcamentoAprovadoHandler,
+    OrcamentoCanceladoHandler,
+    ExecucaoIniciadaHandler,
+    ExecucaoFinalizadaHandler,
   ],
   controllers: [OrdemServicoController],
   exports: [
@@ -88,6 +104,7 @@ import { MetricsService } from "../shared/services/metrics.service";
     AtualizarStatusOrdemServicoUseCase,
     ExcluirOrdemServicoUseCase,
     AprovarOrcamentoUseCase,
+    OsCriadaPublisher,
   ],
 })
 export class OrdemServicoDddModule {}
