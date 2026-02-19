@@ -7,6 +7,7 @@ import { VeiculoDddModule } from './infrastructure/veiculo-ddd.module';
 import { PecaDddModule } from './infrastructure/peca-ddd.module';
 import { ServicoDddModule } from './infrastructure/servico-ddd.module';
 import { OrdemServicoDddModule } from './infrastructure/ordem-servico-ddd.module';
+import { EventBusModule } from './events/event-bus.module';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { OrdemServicoDddModule } from './infrastructure/ordem-servico-ddd.module
     PecaDddModule,
     ServicoDddModule,
     OrdemServicoDddModule,
+    EventBusModule,
   ],
   controllers: [HealthController],
 })

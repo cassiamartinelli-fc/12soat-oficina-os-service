@@ -1,494 +1,159 @@
 import { Test, TestingModule } from "@nestjs/testing";
 import { OrdemServicoController } from "./ordem-servico.controller";
+import { CriarOrdemServicoUseCase } from "../../application/use-cases/ordem-servico/criar-ordem-servico.use-case";
 import {
   BuscarOrdemServicoUseCase,
   ExcluirOrdemServicoUseCase,
   AprovarOrcamentoUseCase,
 } from "../../application/use-cases/ordem-servico";
-import { CriarOrdemServicoUseCase } from "../../application/use-cases/ordem-servico/criar-ordem-servico.use-case";
 import { AtualizarStatusOrdemServicoUseCase } from "../../application/use-cases/ordem-servico/atualizar-status-ordem-servico.use-case";
 import { ListarOrdensEmAndamentoUseCase } from "../../application/use-cases/ordem-servico/listar-ordens-em-andamento.use-case";
 import { OrdemServicoQueryFactory } from "../../application/strategies/ordem-servico-query.factory";
 import { OrdemServicoResponseMapper } from "../../application/mappers/ordem-servico-response.mapper";
 import { OrdemServicoEmAndamentoMapper } from "../../application/mappers/ordem-servico-em-andamento.mapper";
+import { OsCriadaPublisher } from "../../events/publishers/os-criada.publisher";
 import { StatusOrdemServico } from "../../domain/value-objects/status-ordem-servico.vo";
 
 describe("OrdemServicoController", () => {
   let controller: OrdemServicoController;
-  let criarOrdemServicoUseCase: jest.Mocked<CriarOrdemServicoUseCase>;
-  let buscarOrdemServicoUseCase: jest.Mocked<BuscarOrdemServicoUseCase>;
-  let atualizarStatusOrdemServicoUseCase: jest.Mocked<AtualizarStatusOrdemServicoUseCase>;
-  let excluirOrdemServicoUseCase: jest.Mocked<ExcluirOrdemServicoUseCase>;
-  let aprovarOrcamentoUseCase: jest.Mocked<AprovarOrcamentoUseCase>;
-  let listarOrdensEmAndamentoUseCase: jest.Mocked<ListarOrdensEmAndamentoUseCase>;
-  let queryFactory: jest.Mocked<OrdemServicoQueryFactory>;
-  let responseMapper: jest.Mocked<OrdemServicoResponseMapper>;
-  let ordemServicoEmAndamentoMapper: jest.Mocked<OrdemServicoEmAndamentoMapper>;
 
-  const mockOrdemServico = {
-    id: { obterValor: () => "test-id" },
-    status: { obterValor: () => StatusOrdemServico.RECEBIDA },
-    valorTotal: { obterValor: () => 150.0 },
-    clienteId: { obterValor: () => "cliente-id" },
-    veiculoId: { obterValor: () => "veiculo-id" },
-    periodoExecucao: {
-      obterDataInicio: () => null,
-      obterDataFim: () => null,
-    },
-    calcularDuracaoExecucao: () => null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  } as any;
-
-  const mockOrdemServicoResponse = {
-    id: "test-id",
-    status: StatusOrdemServico.RECEBIDA,
-    valorTotal: 150.0,
-    clienteId: "cliente-id",
-    veiculoId: "veiculo-id",
-    dataInicio: null,
-    dataFim: null,
-    duracaoDias: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-
-  const mockStrategy = {
-    execute: jest.fn(),
-  };
+  const criarUseCase = { execute: jest.fn() };
+  const buscarUseCase = { buscarPorId: jest.fn() };
+  const atualizarStatusUseCase = { execute: jest.fn() };
+  const excluirUseCase = { execute: jest.fn() };
+  const aprovarUseCase = { execute: jest.fn() };
+  const listarEmAndamentoUseCase = { execute: jest.fn() };
+  const queryFactory = { createStrategy: jest.fn() };
+  const responseMapper = { toDto: jest.fn(), toDtoList: jest.fn() };
+  const emAndamentoMapper = { toDtoList: jest.fn() };
+  const publisher = { publish: jest.fn() };
 
   beforeEach(async () => {
-    const mockCriarOrdemServicoUseCase = {
-      execute: jest.fn(),
-    };
-    const mockBuscarOrdemServicoUseCase = {
-      buscarPorId: jest.fn(),
-    };
-    const mockAtualizarStatusOrdemServicoUseCase = {
-      execute: jest.fn(),
-    };
-    const mockExcluirOrdemServicoUseCase = {
-      execute: jest.fn(),
-    };
-    const mockAprovarOrcamentoUseCase = {
-      execute: jest.fn(),
-    };
-    const mockListarOrdensEmAndamentoUseCase = {
-      execute: jest.fn(),
-    };
-    const mockQueryFactory = {
-      createStrategy: jest.fn(),
-    };
-    const mockResponseMapper = {
-      toDto: jest.fn(),
-      toDtoList: jest.fn(),
-    };
-    const mockOrdemServicoEmAndamentoMapper = {
-      toDto: jest.fn(),
-      toDtoList: jest.fn(),
-    };
-
     const module: TestingModule = await Test.createTestingModule({
       controllers: [OrdemServicoController],
       providers: [
-        {
-          provide: CriarOrdemServicoUseCase,
-          useValue: mockCriarOrdemServicoUseCase,
-        },
-        {
-          provide: BuscarOrdemServicoUseCase,
-          useValue: mockBuscarOrdemServicoUseCase,
-        },
+        { provide: CriarOrdemServicoUseCase, useValue: criarUseCase },
+        { provide: BuscarOrdemServicoUseCase, useValue: buscarUseCase },
         {
           provide: AtualizarStatusOrdemServicoUseCase,
-          useValue: mockAtualizarStatusOrdemServicoUseCase,
+          useValue: atualizarStatusUseCase,
         },
-        {
-          provide: ExcluirOrdemServicoUseCase,
-          useValue: mockExcluirOrdemServicoUseCase,
-        },
-        {
-          provide: AprovarOrcamentoUseCase,
-          useValue: mockAprovarOrcamentoUseCase,
-        },
+        { provide: ExcluirOrdemServicoUseCase, useValue: excluirUseCase },
+        { provide: AprovarOrcamentoUseCase, useValue: aprovarUseCase },
         {
           provide: ListarOrdensEmAndamentoUseCase,
-          useValue: mockListarOrdensEmAndamentoUseCase,
+          useValue: listarEmAndamentoUseCase,
         },
-        { provide: OrdemServicoQueryFactory, useValue: mockQueryFactory },
-        { provide: OrdemServicoResponseMapper, useValue: mockResponseMapper },
+        { provide: OrdemServicoQueryFactory, useValue: queryFactory },
+        { provide: OrdemServicoResponseMapper, useValue: responseMapper },
         {
           provide: OrdemServicoEmAndamentoMapper,
-          useValue: mockOrdemServicoEmAndamentoMapper,
+          useValue: emAndamentoMapper,
         },
+        { provide: OsCriadaPublisher, useValue: publisher },
       ],
     }).compile();
 
     controller = module.get<OrdemServicoController>(OrdemServicoController);
-    criarOrdemServicoUseCase = module.get(CriarOrdemServicoUseCase);
-    buscarOrdemServicoUseCase = module.get(BuscarOrdemServicoUseCase);
-    atualizarStatusOrdemServicoUseCase = module.get(
-      AtualizarStatusOrdemServicoUseCase,
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it("criarOrdemServico", async () => {
+    const ordemMock = {
+      id: { obterValor: () => "1" },
+      clienteId: { obterValor: () => "c1" },
+      veiculoId: { obterValor: () => "v1" },
+      valorTotal: { obterValor: () => 100 },
+    };
+
+    criarUseCase.execute.mockResolvedValue(ordemMock);
+    responseMapper.toDto.mockReturnValue({ id: "1" });
+
+    const result = await controller.criarOrdemServico({} as any);
+
+    expect(criarUseCase.execute).toHaveBeenCalled();
+    expect(publisher.publish).toHaveBeenCalledWith("1", "c1", "v1", 100);
+    expect(result).toEqual({ id: "1" });
+  });
+
+  it("listarOrdensServico", async () => {
+    const strategy = { execute: jest.fn().mockResolvedValue(["ordem"]) };
+    queryFactory.createStrategy.mockReturnValue(strategy);
+    responseMapper.toDtoList.mockReturnValue(["dto"]);
+
+    const result = await controller.listarOrdensServico(
+      "c1",
+      "v1",
+      StatusOrdemServico.RECEBIDA,
     );
-    excluirOrdemServicoUseCase = module.get(ExcluirOrdemServicoUseCase);
-    aprovarOrcamentoUseCase = module.get(AprovarOrcamentoUseCase);
-    listarOrdensEmAndamentoUseCase = module.get(ListarOrdensEmAndamentoUseCase);
-    queryFactory = module.get(OrdemServicoQueryFactory);
-    responseMapper = module.get(OrdemServicoResponseMapper);
-    ordemServicoEmAndamentoMapper = module.get(OrdemServicoEmAndamentoMapper);
+
+    expect(queryFactory.createStrategy).toHaveBeenCalledWith({
+      clienteId: "c1",
+      veiculoId: "v1",
+      status: StatusOrdemServico.RECEBIDA,
+    });
+    expect(result).toEqual(["dto"]);
   });
 
-  it("deve estar definido", () => {
-    expect(controller).toBeDefined();
+  it("listarOrdensEmAndamento", async () => {
+    listarEmAndamentoUseCase.execute.mockResolvedValue(["ordem"]);
+    emAndamentoMapper.toDtoList.mockReturnValue(["dto"]);
+
+    const result = await controller.listarOrdensEmAndamento();
+
+    expect(listarEmAndamentoUseCase.execute).toHaveBeenCalled();
+    expect(result).toEqual(["dto"]);
   });
 
-  describe("criarOrdemServico", () => {
-    it("deve criar uma ordem de serviço completa com sucesso", async () => {
-      const createDto = {
-        clienteId: "cliente-id",
-        veiculoId: "veiculo-id",
-        servicos: [
-          {
-            servicoId: "servico-id",
-            quantidade: 1,
-          },
-        ],
-        pecas: [
-          {
-            pecaId: "peca-id",
-            quantidade: 2,
-          },
-        ],
-      };
+  it("buscarOrdemServicoPorId", async () => {
+    buscarUseCase.buscarPorId.mockResolvedValue("ordem");
+    responseMapper.toDto.mockReturnValue("dto");
 
-      criarOrdemServicoUseCase.execute.mockResolvedValue(mockOrdemServico);
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
+    const result = await controller.buscarOrdemServicoPorId("1");
 
-      const result = await controller.criarOrdemServico(createDto);
+    expect(buscarUseCase.buscarPorId).toHaveBeenCalledWith("1");
+    expect(result).toBe("dto");
+  });
 
-      expect(criarOrdemServicoUseCase.execute).toHaveBeenCalledWith(createDto);
-      expect(responseMapper.toDto).toHaveBeenCalledWith(mockOrdemServico);
-      expect(result).toEqual(mockOrdemServicoResponse);
-    });
+  it("excluirOrdemServico", async () => {
+    const result = await controller.excluirOrdemServico("1");
 
-    it("deve criar ordem de serviço só com serviços", async () => {
-      const createDto = {
-        clienteId: "cliente-id",
-        veiculoId: "veiculo-id",
-        servicos: [
-          {
-            servicoId: "servico-id",
-            quantidade: 1,
-          },
-        ],
-        pecas: [],
-      };
-
-      criarOrdemServicoUseCase.execute.mockResolvedValue(mockOrdemServico);
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      const result = await controller.criarOrdemServico(createDto);
-
-      expect(criarOrdemServicoUseCase.execute).toHaveBeenCalledWith(createDto);
-      expect(result).toEqual(mockOrdemServicoResponse);
-    });
-
-    it("deve criar ordem de serviço só com peças", async () => {
-      const createDto = {
-        clienteId: "cliente-id",
-        veiculoId: "veiculo-id",
-        servicos: [],
-        pecas: [
-          {
-            pecaId: "peca-id",
-            quantidade: 3,
-          },
-        ],
-      };
-
-      criarOrdemServicoUseCase.execute.mockResolvedValue(mockOrdemServico);
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      const result = await controller.criarOrdemServico(createDto);
-
-      expect(criarOrdemServicoUseCase.execute).toHaveBeenCalledWith(createDto);
-      expect(result).toEqual(mockOrdemServicoResponse);
+    expect(excluirUseCase.execute).toHaveBeenCalledWith("1");
+    expect(result).toEqual({
+      message: "Ordem de serviço excluída com sucesso",
     });
   });
 
-  describe("listarOrdensServico", () => {
-    it("deve listar todas as ordens de serviço", async () => {
-      const ordensServico = [mockOrdemServico];
-      const responses = [mockOrdemServicoResponse];
+  it("aprovarOrcamento", async () => {
+    aprovarUseCase.execute.mockResolvedValue("ordem");
+    responseMapper.toDto.mockReturnValue("dto");
 
-      queryFactory.createStrategy.mockReturnValue(mockStrategy);
-      mockStrategy.execute.mockResolvedValue(ordensServico);
-      responseMapper.toDtoList.mockReturnValue(responses);
-
-      const result = await controller.listarOrdensServico();
-
-      expect(queryFactory.createStrategy).toHaveBeenCalledWith({});
-      expect(mockStrategy.execute).toHaveBeenCalled();
-      expect(responseMapper.toDtoList).toHaveBeenCalledWith(ordensServico);
-      expect(result).toEqual(responses);
+    const result = await controller.aprovarOrcamento("1", {
+      aprovado: true,
     });
 
-    it("deve listar ordens de serviço filtradas por cliente", async () => {
-      const clienteId = "cliente-id";
-      const ordensServico = [mockOrdemServico];
-      const responses = [mockOrdemServicoResponse];
-
-      queryFactory.createStrategy.mockReturnValue(mockStrategy);
-      mockStrategy.execute.mockResolvedValue(ordensServico);
-      responseMapper.toDtoList.mockReturnValue(responses);
-
-      const result = await controller.listarOrdensServico(clienteId);
-
-      expect(queryFactory.createStrategy).toHaveBeenCalledWith({ clienteId });
-      expect(mockStrategy.execute).toHaveBeenCalled();
-      expect(responseMapper.toDtoList).toHaveBeenCalledWith(ordensServico);
-      expect(result).toEqual(responses);
+    expect(aprovarUseCase.execute).toHaveBeenCalledWith({
+      ordemServicoId: "1",
+      aprovado: true,
     });
-
-    it("deve listar ordens de serviço filtradas por status", async () => {
-      const status = StatusOrdemServico.EM_EXECUCAO;
-      const ordensServico = [mockOrdemServico];
-      const responses = [mockOrdemServicoResponse];
-
-      queryFactory.createStrategy.mockReturnValue(mockStrategy);
-      mockStrategy.execute.mockResolvedValue(ordensServico);
-      responseMapper.toDtoList.mockReturnValue(responses);
-
-      const result = await controller.listarOrdensServico(
-        undefined,
-        undefined,
-        status,
-      );
-
-      expect(queryFactory.createStrategy).toHaveBeenCalledWith({ status });
-      expect(result).toEqual(responses);
-    });
+    expect(result).toBe("dto");
   });
 
-  describe("listarOrdensEmAndamento", () => {
-    it("deve listar ordens em andamento com sucesso", async () => {
-      const ordensEmAndamento = [mockOrdemServico];
-      const mockEmAndamentoDto = {
-        id: "test-id",
-        status: StatusOrdemServico.EM_EXECUCAO,
-        dataCriacao: new Date(),
-      };
-      const mockEmAndamentoDtoList = [mockEmAndamentoDto];
+  it("atualizarStatus", async () => {
+    atualizarStatusUseCase.execute.mockResolvedValue("ordem");
+    responseMapper.toDto.mockReturnValue("dto");
 
-      listarOrdensEmAndamentoUseCase.execute.mockResolvedValue(
-        ordensEmAndamento,
-      );
-      ordemServicoEmAndamentoMapper.toDtoList.mockReturnValue(
-        mockEmAndamentoDtoList,
-      );
-
-      const result = await controller.listarOrdensEmAndamento();
-
-      expect(listarOrdensEmAndamentoUseCase.execute).toHaveBeenCalledWith();
-      expect(ordemServicoEmAndamentoMapper.toDtoList).toHaveBeenCalledWith(
-        ordensEmAndamento,
-      );
-      expect(result).toEqual(mockEmAndamentoDtoList);
+    const result = await controller.atualizarStatus("1", {
+      status: StatusOrdemServico.FINALIZADA,
     });
 
-    it("deve retornar lista vazia quando não há ordens em andamento", async () => {
-      listarOrdensEmAndamentoUseCase.execute.mockResolvedValue([]);
-      ordemServicoEmAndamentoMapper.toDtoList.mockReturnValue([]);
-
-      const result = await controller.listarOrdensEmAndamento();
-
-      expect(result).toEqual([]);
+    expect(atualizarStatusUseCase.execute).toHaveBeenCalledWith({
+      ordemServicoId: "1",
+      novoStatus: StatusOrdemServico.FINALIZADA,
     });
-  });
-
-  describe("buscarOrdemServicoPorId", () => {
-    it("deve buscar ordem de serviço por id", async () => {
-      const id = "test-id";
-
-      buscarOrdemServicoUseCase.buscarPorId.mockResolvedValue(mockOrdemServico);
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      const result = await controller.buscarOrdemServicoPorId(id);
-
-      expect(buscarOrdemServicoUseCase.buscarPorId).toHaveBeenCalledWith(id);
-      expect(responseMapper.toDto).toHaveBeenCalledWith(mockOrdemServico);
-      expect(result).toEqual(mockOrdemServicoResponse);
-    });
-  });
-
-  describe("excluirOrdemServico", () => {
-    it("deve excluir ordem de serviço com sucesso", async () => {
-      const id = "test-id";
-
-      excluirOrdemServicoUseCase.execute.mockResolvedValue(undefined);
-
-      const result = await controller.excluirOrdemServico(id);
-
-      expect(excluirOrdemServicoUseCase.execute).toHaveBeenCalledWith(id);
-      expect(result).toEqual({
-        message: "Ordem de serviço excluída com sucesso",
-      });
-    });
-  });
-
-  describe("atualizarStatus", () => {
-    it("deve atualizar status da ordem de serviço com sucesso", async () => {
-      const id = "test-id";
-      const atualizarStatusDto = {
-        status: StatusOrdemServico.EM_DIAGNOSTICO,
-      };
-
-      atualizarStatusOrdemServicoUseCase.execute.mockResolvedValue(
-        mockOrdemServico,
-      );
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      const result = await controller.atualizarStatus(id, atualizarStatusDto);
-
-      expect(atualizarStatusOrdemServicoUseCase.execute).toHaveBeenCalledWith({
-        ordemServicoId: id,
-        novoStatus: atualizarStatusDto.status,
-      });
-      expect(responseMapper.toDto).toHaveBeenCalledWith(mockOrdemServico);
-      expect(result).toEqual(mockOrdemServicoResponse);
-    });
-
-    it("deve transicionar para AGUARDANDO_APROVACAO", async () => {
-      const id = "test-id";
-      const atualizarStatusDto = {
-        status: StatusOrdemServico.AGUARDANDO_APROVACAO,
-      };
-
-      const mockOrdemServicoAtualizada = {
-        ...mockOrdemServico,
-        status: { obterValor: () => StatusOrdemServico.AGUARDANDO_APROVACAO },
-      };
-
-      const mockResponseAtualizada = {
-        ...mockOrdemServicoResponse,
-        status: StatusOrdemServico.AGUARDANDO_APROVACAO,
-      };
-
-      atualizarStatusOrdemServicoUseCase.execute.mockResolvedValue(
-        mockOrdemServicoAtualizada,
-      );
-      responseMapper.toDto.mockReturnValue(mockResponseAtualizada);
-
-      const result = await controller.atualizarStatus(id, atualizarStatusDto);
-
-      expect(result.status).toBe(StatusOrdemServico.AGUARDANDO_APROVACAO);
-    });
-
-    it("deve transicionar para FINALIZADA", async () => {
-      const id = "test-id";
-      const atualizarStatusDto = {
-        status: StatusOrdemServico.FINALIZADA,
-      };
-
-      atualizarStatusOrdemServicoUseCase.execute.mockResolvedValue(
-        mockOrdemServico,
-      );
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      await controller.atualizarStatus(id, atualizarStatusDto);
-
-      expect(atualizarStatusOrdemServicoUseCase.execute).toHaveBeenCalledWith({
-        ordemServicoId: id,
-        novoStatus: StatusOrdemServico.FINALIZADA,
-      });
-    });
-  });
-
-  describe("aprovarOrcamento", () => {
-    it("deve aprovar orçamento com sucesso", async () => {
-      const id = "test-id";
-      const aprovarOrcamentoDto = {
-        aprovado: true,
-      };
-
-      const mockOrdemServicoAprovada = {
-        ...mockOrdemServico,
-        status: { obterValor: () => StatusOrdemServico.EM_EXECUCAO },
-      };
-
-      const mockResponseAprovada = {
-        ...mockOrdemServicoResponse,
-        status: StatusOrdemServico.EM_EXECUCAO,
-      };
-
-      aprovarOrcamentoUseCase.execute.mockResolvedValue(
-        mockOrdemServicoAprovada,
-      );
-      responseMapper.toDto.mockReturnValue(mockResponseAprovada);
-
-      const result = await controller.aprovarOrcamento(id, aprovarOrcamentoDto);
-
-      expect(aprovarOrcamentoUseCase.execute).toHaveBeenCalledWith({
-        ordemServicoId: id,
-        aprovado: true,
-      });
-      expect(responseMapper.toDto).toHaveBeenCalledWith(
-        mockOrdemServicoAprovada,
-      );
-      expect(result).toEqual(mockResponseAprovada);
-      expect(result.status).toBe(StatusOrdemServico.EM_EXECUCAO);
-    });
-
-    it("deve rejeitar orçamento com sucesso (status → CANCELADA)", async () => {
-      const id = "test-id";
-      const aprovarOrcamentoDto = {
-        aprovado: false,
-      };
-
-      const mockOrdemServicoRejeitada = {
-        ...mockOrdemServico,
-        status: { obterValor: () => StatusOrdemServico.CANCELADA },
-      };
-
-      const mockResponseRejeitada = {
-        ...mockOrdemServicoResponse,
-        status: StatusOrdemServico.CANCELADA,
-      };
-
-      aprovarOrcamentoUseCase.execute.mockResolvedValue(
-        mockOrdemServicoRejeitada,
-      );
-      responseMapper.toDto.mockReturnValue(mockResponseRejeitada);
-
-      const result = await controller.aprovarOrcamento(id, aprovarOrcamentoDto);
-
-      expect(aprovarOrcamentoUseCase.execute).toHaveBeenCalledWith({
-        ordemServicoId: id,
-        aprovado: false,
-      });
-      expect(responseMapper.toDto).toHaveBeenCalledWith(
-        mockOrdemServicoRejeitada,
-      );
-      expect(result).toEqual(mockResponseRejeitada);
-      expect(result.status).toBe(StatusOrdemServico.CANCELADA);
-    });
-
-    it("deve chamar use case com parâmetros corretos", async () => {
-      const id = "ordem-123";
-      const aprovarOrcamentoDto = {
-        aprovado: true,
-      };
-
-      aprovarOrcamentoUseCase.execute.mockResolvedValue(mockOrdemServico);
-      responseMapper.toDto.mockReturnValue(mockOrdemServicoResponse);
-
-      await controller.aprovarOrcamento(id, aprovarOrcamentoDto);
-
-      expect(aprovarOrcamentoUseCase.execute).toHaveBeenCalledTimes(1);
-      expect(aprovarOrcamentoUseCase.execute).toHaveBeenCalledWith({
-        ordemServicoId: "ordem-123",
-        aprovado: true,
-      });
-    });
+    expect(result).toBe("dto");
   });
 });

@@ -35,6 +35,7 @@ import { CriarOrdemServicoUseCase } from "../../application/use-cases/ordem-serv
 import { ListarOrdensEmAndamentoUseCase } from "../../application/use-cases/ordem-servico/listar-ordens-em-andamento.use-case";
 import { StatusOrdemServico } from "../../domain/value-objects/status-ordem-servico.vo";
 import { HandleDomainExceptions } from "../../shared/decorators/handle-domain-exceptions.decorator";
+import { OsCriadaPublisher } from "../../events/publishers/os-criada.publisher";
 
 @ApiTags("ordens-servico")
 @Controller("ordens-servico")
@@ -49,6 +50,7 @@ export class OrdemServicoController {
     private readonly queryFactory: OrdemServicoQueryFactory,
     private readonly responseMapper: OrdemServicoResponseMapper,
     private readonly ordemServicoEmAndamentoMapper: OrdemServicoEmAndamentoMapper,
+    private readonly osCriadaPublisher: OsCriadaPublisher,
   ) {}
 
   @Post()
@@ -69,6 +71,12 @@ export class OrdemServicoController {
   ): Promise<OrdemServicoResponseDto> {
     const ordemServico = await this.criarOrdemServicoUseCase.execute(
       createOrdemServicoDto,
+    );
+    await this.osCriadaPublisher.publish(
+      ordemServico.id.obterValor(),
+      ordemServico.clienteId?.obterValor() ?? '',
+      ordemServico.veiculoId?.obterValor() ?? '',
+      ordemServico.valorTotal.obterValor(),
     );
     return this.responseMapper.toDto(ordemServico);
   }
