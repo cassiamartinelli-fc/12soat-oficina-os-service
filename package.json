@@ -11,7 +11,8 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:cov": "npx jest --coverage --coverageReporters=lcov --coverageReporters=text-summary",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand"
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
+    "test:bdd": "cucumber-js"
   },
   "keywords": [],
   "author": "",
@@ -33,6 +34,7 @@
     "typeorm": "^0.3.28"
   },
   "devDependencies": {
+    "@cucumber/cucumber": "^11.3.0",
     "@nestjs/cli": "^11.0.16",
     "@nestjs/testing": "^11.1.13",
     "@types/jest": "^30.0.0",
