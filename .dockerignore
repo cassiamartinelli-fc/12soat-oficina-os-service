@@ -17,3 +17,5 @@ tsconfig.spec.json
 **/*.test.ts
 **/__tests__
 **/__mocks__
+features/
+cucumber.js
