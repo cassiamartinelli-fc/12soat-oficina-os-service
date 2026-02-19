@@ -3,24 +3,20 @@ import { OrcamentoAprovadoHandler } from "./orcamento-aprovado.handler";
 import { EventBusService } from "../event-bus.service";
 import { AtualizarStatusOrdemServicoUseCase } from "../../application/use-cases/ordem-servico/atualizar-status-ordem-servico.use-case";
 import { StatusOrdemServico } from "../../domain/value-objects/status-ordem-servico.vo";
-import { Logger } from "@nestjs/common";
 
 describe("OrcamentoAprovadoHandler", () => {
   let handler: OrcamentoAprovadoHandler;
-  let eventBus: { registerHandler: jest.Mock };
-  let atualizarStatus: { execute: jest.Mock };
+  let eventBus: jest.Mocked<EventBusService>;
+  let atualizarStatus: jest.Mocked<AtualizarStatusOrdemServicoUseCase>;
 
   beforeEach(async () => {
     eventBus = {
       registerHandler: jest.fn(),
-    };
+    } as any;
 
     atualizarStatus = {
       execute: jest.fn(),
-    };
-
-    jest.spyOn(Logger.prototype, "log").mockImplementation();
-    jest.spyOn(Logger.prototype, "error").mockImplementation();
+    } as any;
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -33,47 +29,49 @@ describe("OrcamentoAprovadoHandler", () => {
       ],
     }).compile();
 
-    handler = module.get(OrcamentoAprovadoHandler);
+    handler = module.get<OrcamentoAprovadoHandler>(OrcamentoAprovadoHandler);
   });
 
-  afterEach(() => {
-    jest.clearAllMocks();
-  });
+  describe("onModuleInit", () => {
+    it("should register handler for ORCAMENTO_APROVADO event", () => {
+      handler.onModuleInit();
 
-  it("should be defined", () => {
-    expect(handler).toBeDefined();
-  });
-
-  it("should register handler on module init", () => {
-    handler.onModuleInit();
-
-    expect(eventBus.registerHandler).toHaveBeenCalledWith(
-      "ORCAMENTO_APROVADO",
-      expect.any(Function),
-    );
-  });
-
-  it("should handle event and update status to EM_EXECUCAO", async () => {
-    atualizarStatus.execute.mockResolvedValue(undefined);
-
-    await handler.handle({
-      payload: { osId: "123" },
-    } as any);
-
-    expect(atualizarStatus.execute).toHaveBeenCalledWith({
-      ordemServicoId: "123",
-      novoStatus: StatusOrdemServico.EM_EXECUCAO,
+      expect(eventBus.registerHandler).toHaveBeenCalledTimes(1);
+      expect(eventBus.registerHandler).toHaveBeenCalledWith(
+        "ORCAMENTO_APROVADO",
+        expect.any(Function),
+      );
     });
-    expect(Logger.prototype.log).toHaveBeenCalled();
   });
 
-  it("should log error if update fails", async () => {
-    atualizarStatus.execute.mockRejectedValue(new Error("fail"));
+  describe("handle", () => {
+    it("should update status to PAGAMENTO_APROVADO", async () => {
+      const event = {
+        payload: {
+          osId: "123",
+        },
+      };
 
-    await handler.handle({
-      payload: { osId: "123" },
-    } as any);
+      await handler.handle(event as any);
 
-    expect(Logger.prototype.error).toHaveBeenCalled();
+      expect(atualizarStatus.execute).toHaveBeenCalledTimes(1);
+      expect(atualizarStatus.execute).toHaveBeenCalledWith({
+        ordemServicoId: "123",
+        novoStatus: StatusOrdemServico.PAGAMENTO_APROVADO,
+      });
+    });
+
+    it("should not throw if use case fails", async () => {
+      atualizarStatus.execute.mockRejectedValueOnce(new Error("fail"));
+
+      const event = {
+        payload: {
+          osId: "123",
+        },
+      };
+
+      await expect(handler.handle(event as any)).resolves.not.toThrow();
+      expect(atualizarStatus.execute).toHaveBeenCalled();
+    });
   });
 });

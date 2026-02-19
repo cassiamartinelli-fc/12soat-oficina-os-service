@@ -12,16 +12,9 @@ import { Cliente } from './cliente.entity'
 import { Veiculo } from './veiculo.entity'
 import { ItemOrdemServico } from './item-ordem-servico.entity'
 import { PecaOrdemServico } from './peca-ordem-servico.entity'
+import { StatusOrdemServico } from '../../../domain/value-objects/status-ordem-servico.vo'
 
-export enum StatusOrdemServico {
-  RECEBIDA = 'recebida',
-  EM_DIAGNOSTICO = 'em_diagnostico',
-  AGUARDANDO_APROVACAO = 'aguardando_aprovacao',
-  EM_EXECUCAO = 'em_execucao',
-  CANCELADA = 'cancelada',
-  FINALIZADA = 'finalizada',
-  ENTREGUE = 'entregue',
-}
+export { StatusOrdemServico }
 
 @Entity('ordens_servico')
 export class OrdemServico {
