@@ -42,4 +42,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
 USER node
 
 # Comando para iniciar a aplicação
-CMD ["node", "dist/src/main"]
+CMD ["node", "dist/main"]
