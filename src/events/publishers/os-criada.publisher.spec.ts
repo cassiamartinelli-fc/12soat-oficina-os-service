@@ -11,6 +11,8 @@ describe("OsCriadaPublisher", () => {
       publish: jest.fn().mockResolvedValue(undefined),
     };
 
+    delete process.env.SQS_BILLING_QUEUE_URL;
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OsCriadaPublisher,
@@ -43,6 +45,7 @@ describe("OsCriadaPublisher", () => {
         valorTotal: 1000,
       },
       "os-service",
+      [],
     );
   });
 });
