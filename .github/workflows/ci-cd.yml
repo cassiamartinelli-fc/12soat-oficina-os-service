@@ -19,7 +19,7 @@ jobs:
       - name: Configurar Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Instalar dependências
         run: npm ci
@@ -98,7 +98,8 @@ jobs:
             --from-literal=DATABASE_URL="${{ secrets.OS_DATABASE_URL }}" \
             --from-literal=AWS_ACCESS_KEY_ID="${{ secrets.AWS_ACCESS_KEY_ID }}" \
             --from-literal=AWS_SECRET_ACCESS_KEY="${{ secrets.AWS_SECRET_ACCESS_KEY }}" \
-            --from-literal=SQS_QUEUE_URL="${{ secrets.SQS_QUEUE_URL }}" \
+            --from-literal=SQS_OS_QUEUE_URL="${{ secrets.SQS_OS_QUEUE_URL }}" \
+            --from-literal=SQS_BILLING_QUEUE_URL="${{ secrets.SQS_BILLING_QUEUE_URL }}" \
             --dry-run=client -o yaml | kubectl apply -f -
 
       - name: Realizar deploy no K3s
