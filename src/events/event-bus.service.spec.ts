@@ -23,7 +23,7 @@ describe("EventBusService", () => {
   let clientSendMock: jest.Mock;
 
   beforeEach(async () => {
-    process.env.SQS_QUEUE_URL = "http://localhost/queue";
+    process.env.SQS_OS_QUEUE_URL = "http://localhost/queue";
     process.env.AWS_REGION = "us-east-1";
 
     module = await Test.createTestingModule({
@@ -59,7 +59,7 @@ describe("EventBusService", () => {
   });
 
   it("should not publish if queueUrl is empty", async () => {
-    process.env.SQS_QUEUE_URL = "";
+    process.env.SQS_OS_QUEUE_URL = "";
     const newService = new EventBusService();
     const spy = jest.spyOn((newService as any).client, "send");
 
