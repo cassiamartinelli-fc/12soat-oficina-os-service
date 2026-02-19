@@ -4,6 +4,7 @@ export enum StatusOrdemServico {
   RECEBIDA = 'recebida',
   EM_DIAGNOSTICO = 'em_diagnostico',
   AGUARDANDO_APROVACAO = 'aguardando_aprovacao',
+  PAGAMENTO_APROVADO = 'pagamento_aprovado',
   EM_EXECUCAO = 'em_execucao',
   FINALIZADA = 'finalizada',
   CANCELADA = 'cancelada',
@@ -65,11 +66,19 @@ export class StatusOrdemServicoVO {
   // Validação de transições manuais permitidas
   private podeTransicionarManualmentePara(novoStatus: StatusOrdemServico): boolean {
     const transicoesPermitidas = {
-      [StatusOrdemServico.RECEBIDA]: [StatusOrdemServico.EM_DIAGNOSTICO],
+      [StatusOrdemServico.RECEBIDA]: [
+        StatusOrdemServico.EM_DIAGNOSTICO,
+        StatusOrdemServico.PAGAMENTO_APROVADO, // via evento OrcamentoAprovado
+        StatusOrdemServico.CANCELADA,          // via evento OrcamentoCancelado
+      ],
       [StatusOrdemServico.EM_DIAGNOSTICO]: [StatusOrdemServico.AGUARDANDO_APROVACAO],
       [StatusOrdemServico.AGUARDANDO_APROVACAO]: [
-        StatusOrdemServico.EM_EXECUCAO, // Aprovado
-        StatusOrdemServico.CANCELADA, // Rejeitado
+        StatusOrdemServico.PAGAMENTO_APROVADO, // via evento OrcamentoAprovado
+        StatusOrdemServico.CANCELADA,          // via evento OrcamentoCancelado
+      ],
+      [StatusOrdemServico.PAGAMENTO_APROVADO]: [
+        StatusOrdemServico.EM_EXECUCAO, // via evento ExecucaoIniciada
+        StatusOrdemServico.CANCELADA,   // compensação
       ],
       [StatusOrdemServico.EM_EXECUCAO]: [StatusOrdemServico.FINALIZADA],
       [StatusOrdemServico.FINALIZADA]: [StatusOrdemServico.ENTREGUE],
@@ -90,6 +99,10 @@ export class StatusOrdemServicoVO {
 
   isAguardandoAprovacao(): boolean {
     return this.valor === StatusOrdemServico.AGUARDANDO_APROVACAO
+  }
+
+  isPagamentoAprovado(): boolean {
+    return this.valor === StatusOrdemServico.PAGAMENTO_APROVADO
   }
 
   isEmExecucao(): boolean {
@@ -130,9 +143,10 @@ export class StatusOrdemServicoVO {
   getPrioridade(): number {
     const prioridades = {
       [StatusOrdemServico.EM_EXECUCAO]: 1,
-      [StatusOrdemServico.AGUARDANDO_APROVACAO]: 2,
-      [StatusOrdemServico.EM_DIAGNOSTICO]: 3,
-      [StatusOrdemServico.RECEBIDA]: 4,
+      [StatusOrdemServico.PAGAMENTO_APROVADO]: 2,
+      [StatusOrdemServico.AGUARDANDO_APROVACAO]: 3,
+      [StatusOrdemServico.EM_DIAGNOSTICO]: 4,
+      [StatusOrdemServico.RECEBIDA]: 5,
       [StatusOrdemServico.FINALIZADA]: 999,
       [StatusOrdemServico.ENTREGUE]: 999,
       [StatusOrdemServico.CANCELADA]: 999,
@@ -145,6 +159,7 @@ export class StatusOrdemServicoVO {
       StatusOrdemServico.RECEBIDA,
       StatusOrdemServico.EM_DIAGNOSTICO,
       StatusOrdemServico.AGUARDANDO_APROVACAO,
+      StatusOrdemServico.PAGAMENTO_APROVADO,
       StatusOrdemServico.EM_EXECUCAO,
     ].includes(this.valor)
   }

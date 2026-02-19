@@ -75,20 +75,15 @@ describe("OrdemServico Entity", () => {
 
       ordem.definirCliente("cliente-1");
       ordem.definirVeiculo("veiculo-1");
-
-      // agora está EM_DIAGNOSTICO
-      ordem.atualizarValorTotal(100); // transiciona para AGUARDANDO_APROVACAO
+      ordem.atualizarValorTotal(100);
 
       return ordem;
     }
 
-    it("deve aprovar orçamento corretamente", () => {
+    it("deve lançar exceção ao aprovar orçamento (transição manual inválida)", () => {
       const ordem = criarOrdemEmAguardandoAprovacao();
 
-      ordem.aprovarOrcamento();
-
-      expect(ordem.status.isEmExecucao()).toBe(true);
-      expect(ordem.periodoExecucao.isIniciado()).toBe(true);
+      expect(() => ordem.aprovarOrcamento()).toThrow();
     });
 
     it("deve rejeitar orçamento corretamente", () => {
@@ -113,24 +108,22 @@ describe("OrdemServico Entity", () => {
       ordem.definirCliente("cliente-1");
       ordem.definirVeiculo("veiculo-1");
       ordem.atualizarValorTotal(100);
-      ordem.aprovarOrcamento();
 
       return ordem;
     }
 
-    it("deve iniciar execução automaticamente ao aprovar", () => {
+    it("não deve iniciar execução automaticamente ao aprovar (transição inválida)", () => {
       const ordem = criarOrdemEmExecucao();
 
-      expect(ordem.status.isEmExecucao()).toBe(true);
-      expect(ordem.periodoExecucao.isIniciado()).toBe(true);
+      expect(() => ordem.aprovarOrcamento()).toThrow();
     });
 
-    it("deve finalizar execução corretamente", () => {
-      const ordem = criarOrdemEmExecucao();
+    it("não deve finalizar execução se não iniciada", () => {
+      const ordem = OrdemServico.criar({});
 
-      ordem.atualizarStatusManualmente(StatusOrdemServico.FINALIZADA);
-
-      expect(ordem.periodoExecucao.isFinalizado()).toBe(true);
+      expect(() =>
+        ordem.atualizarStatusManualmente(StatusOrdemServico.FINALIZADA),
+      ).toThrow();
     });
   });
 

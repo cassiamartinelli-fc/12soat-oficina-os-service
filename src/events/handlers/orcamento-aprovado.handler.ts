@@ -26,9 +26,9 @@ export class OrcamentoAprovadoHandler implements OnModuleInit {
     try {
       await this.atualizarStatus.execute({
         ordemServicoId: osId,
-        novoStatus: StatusOrdemServico.EM_EXECUCAO,
+        novoStatus: StatusOrdemServico.PAGAMENTO_APROVADO,
       });
-      this.logger.log(`OS ${osId} atualizada para EM_EXECUCAO`);
+      this.logger.log(`OS ${osId} atualizada para PAGAMENTO_APROVADO`);
     } catch (err) {
       this.logger.error(`Erro ao atualizar OS ${osId}: ${err.message}`);
     }
